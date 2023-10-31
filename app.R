@@ -5,7 +5,6 @@
 # Creating the app
 library(shiny) 
 # For Creating reactive plots
-library(ggridges)
 library(ggplot2)
 # Themes for the shiny app
 library(shinythemes)
@@ -13,8 +12,6 @@ library(shinythemes)
 library(maps)
 # Filtering data
 library(dplyr)
-
-
 
 # Data sets used in the app
 # Long/Lat data for states
@@ -32,7 +29,8 @@ which_state <- function(mapData, long, lat) {
   mapData$lat_diff <- mapData$lat - lat
   
   # only compare borders near the clicked point to save computing time
-  mapData <- mapData[abs(mapData$long_diff) < 20 & abs(mapData$lat_diff) < 15, ]
+  mapData <- mapData[abs(mapData$long_diff) < 20 & 
+                       abs(mapData$lat_diff) < 15, ]
   
   # calculate the angle between the vector from this clicked point to border and c(1, 0)
   vLong <- mapData$long_diff
@@ -40,16 +38,24 @@ which_state <- function(mapData, long, lat) {
   mapData$angle <- acos(vLong / sqrt(vLong^2 + vLat^2))
   
   # calculate range of the angle and select the state with largest range
-  rangeAngle <- tapply(mapData$angle, mapData$region, function(x) max(x) - min(x))
-  return(names(sort(rangeAngle, decreasing = TRUE))[1])
+  rangeAngle <- tapply(mapData$angle, 
+                       mapData$region, 
+                       function(x) max(x) - min(x))
+  return(names(
+    sort(
+      rangeAngle, decreasing = TRUE))[1])
 }
 
 
 
 
 # Creating function for the USA map to make later code cleaner
-plotMap <- ggplot(usaMap, aes(x = long, y = lat, group = group)) + 
-  geom_polygon(fill = "white", color = "black") +
+plotMap <- ggplot(usaMap, 
+                  aes(x = long, 
+                      y = lat, 
+                      group = group)) + 
+  geom_polygon(fill = "white", 
+               color = "black") +
   theme_void()
 
 
@@ -69,8 +75,13 @@ ui <- fluidPage(
         
       ),
       mainPanel(
-        plotOutput("map", click = "clickMap", width = 600, height = 375),
-        plotOutput("weather", width = 430, height = 275)
+        plotOutput("map", 
+                   click = "clickMap", 
+                   width = 600, 
+                   height = 375),
+        plotOutput("weather", 
+                   width = 430, 
+                   height = 275)
       )
    )
 )
@@ -82,13 +93,14 @@ server <- function(input, output, session) {
   # intital plots
   output$map <- renderPlot({
     plotMap
-    # coord_map(), do not use it. More discussion next section.
   })
+  
   output$weather <- renderPlot({
     g <- accident %>% 
       filter(WEATHERNAME %in% input$weather_input)
     g1<- ggplot(g, mapping = 
-                  aes(x = WEATHERNAME, y = FATALS, color = WEATHERNAME)) +
+                  aes(x = WEATHERNAME, y = FATALS, 
+                      color = WEATHERNAME)) +
       labs(x = "Weather Type") +
       geom_jitter(show.legend = FALSE)
     g1
@@ -102,16 +114,24 @@ server <- function(input, output, session) {
     output$map <- renderPlot(
       plotMap + 
         geom_polygon(data = usaMap[usaMap$region == state,], fill = "beige") +
-        annotate("text", x = xClick, y = yClick, label = state, color = "firebrick", size = 7, fontface = "bold")
+        annotate("text", x = xClick, y = yClick, label = state, 
+                 color = "firebrick", size = 7, fontface = "bold")
     )
     output$weather <- renderPlot({
       g <- accident %>% 
-        filter(WEATHERNAME %in% input$weather_input)
+        filter(WEATHERNAME %in% input$weather_input
+               # There used to be a function to filter based on which state was
+               # clicked, but when included it just clears all data from the 
+               # jitter plot
+               )
       g1<- ggplot(g, mapping = 
-                    aes(x = WEATHERNAME, y = FATALS, color = WEATHERNAME)) +
+                    aes(x = WEATHERNAME, y = FATALS, 
+                        color = WEATHERNAME)) +
         labs(x = "Weather Type") +
         geom_jitter(show.legend = FALSE)
       g1 
+      # Things change on the jitter plot when states are clicked, the 
+      # Changes just don't make any sense given the data :'(
     })
   })
 }
